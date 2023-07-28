@@ -1,106 +1,101 @@
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
-import torch
-import torch.nn as nn
+import lstm_accelerator
 
-# Load the data
-data = pd.read_csv("airline-passengers.csv")
+f = open('guntest_1128_1.txt', 'r')
+f2 = open('gunpower_1128_1.txt', 'r')
 
-# Extract the "Passengers" column
-passengers_data = data["Passengers"].values.reshape(-1, 1)
+content = f.read()
+content2 = f2.read()
 
-# Normalize the data to the range [0, 1]
-scaler = MinMaxScaler(feature_range=(0, 1))
-normalized_passengers = scaler.fit_transform(passengers_data)
+# discard header
+data = content[55::]
+data2 = content2[18::]
 
-# Define the size of the training set (80% of the data)
-train_size = int(len(normalized_passengers) * 0.8)
-train_data = normalized_passengers[:train_size]
-test_data = normalized_passengers[train_size:]
+# The code uses the split method to split the data strings into individual elements based on the comma (,) delimiter.
+# The map and str.strip functions are used to remove leading and trailing whitespaces from each element.
+res = list(map(str.strip, data.split(',')))
+res2 = list(map(str.strip, data2.split(',')))
 
-def create_dataset(dataset, time_steps=1):
-    X, y = [], []
-    for i in range(len(dataset) - time_steps):
-        X.append(dataset[i:i+time_steps, 0])
-        y.append(dataset[i+time_steps, 0])
-    return np.array(X), np.array(y)
+print(len(res))
 
-# Define the number of time steps for the LSTM
-time_steps = 10
+data_list = ['WGTCAVT','WGTCAV','WGFCTLT','WGFCTL','WGFLWT','WGFLW']
+# this is: 
+#1. the time for the Cavity temp
+#2. the Cavity temp
+#3. the time for the Flow Valve
+#4. the Flow Valve
+#5. the time for the Flow Rate
+#6. the Flow Rate
+data_list2 = ["GCVFPMT","GCVFPM"]
+#7. the gun forward power time
+#8. the gun forward power
 
-# Create training and testing datasets
-X_train, y_train = create_dataset(train_data, time_steps)
-X_test, y_test = create_dataset(test_data, time_steps)
+# checking the parts of the file (uncomment to test)
+print(res[0], res[1], res[2],res[3],res[4],res[5]) #expected: 0.0000 42.9920 0.0000 19.0326 0.0000 3.5872
+print(res[0+6], res[1+6], res[2+6],res[3+6],res[4+6],res[5+6]) #expected: 0.0003 42.9920 0.0003 19.0539 0.0003 3.5827
+print(res[-7], res[-6], res[-5],res[-4],res[-3],res[-2]) #expected: 3.9998 42.9920 3.9998 14.4045 3.9998 2.7641
+print(res[-1], res2[-1]) #expected: ""
 
-# Convert data to PyTorch tensors
-X_train = torch.tensor(X_train, dtype=torch.float32)
-y_train = torch.tensor(y_train, dtype=torch.float32)
-X_test = torch.tensor(X_test, dtype=torch.float32)
-y_test = torch.tensor(y_test, dtype=torch.float32)
+# remove the last cells (which are empty) from the list
+res = res[0:-1]
+res2 = res2[0:-1]
 
-# Reshape the input data to fit the LSTM model (samples, time_steps, features)
-X_train = X_train.view(X_train.shape[0], X_train.shape[1], 1)
-X_test = X_test.view(X_test.shape[0], X_test.shape[1], 1)
+# since theres 6 data types per time in first file and 2 in the second file
+lenres1 = int(len(res)/6)
+lenres2 = int(len(res2)/2)
 
-class LSTMModel(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers):
-        super(LSTMModel, self).__init__()
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
-        self.fc = nn.Linear(hidden_size, 1)
+# putting it into a numpy file and converting to numbers from strings
+data1 = np.zeros((lenres1,6))
+j=0
+for i in range(0, lenres1):
+    data1[i,:]= res[j],res[j+1],res[j+2],res[j+3],res[j+4],res[j+5]
+    j=j+6
 
-    def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
-        out, _ = self.lstm(x, (h0, c0))
-        out = self.fc(out[:, -1, :])
-        return out
+    
+# putting it into a numpy file and converting to numbers from strings
+data1 = np.zeros((lenres1,6))
+j = 0
+for i in range(0, lenres1):
+    data1[i,:] = res[j],res[j+1],res[j+2],res[j+3],res[j+4],res[j+5]
+    j = j + 6
 
-# Define model parameters
-input_size = 1
-hidden_size = 50
-num_layers = 2
+    
+# putting it into a numpy file and converting to numbers from strings
+data2 = np.zeros((lenres2,2))
+j = 0
+for i in range(0, lenres2):
+    data2[i,:] = res2[j],res2[j+1]
+    j = j + 2
 
-# Create the LSTM model
-model = LSTMModel(input_size, hidden_size, num_layers)
+plt.plot(data1[:,1],'.')
+plt.plot(data1[:,3],'.')
+plt.plot(data1[:,5],'.')
+plt.show()
 
-# Define the loss function and optimizer
-criterion = nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+plt.plot(data1[2000:4000,1],'.')
+plt.plot(data1[2000:4000,3],'.')
+plt.plot(data1[2000:4000,5],'.')
+plt.legend(['WGTCAV (deg C)','WGFCTL(% open)','WGFLW'])
+plt.show()
 
-num_epochs = 100
-batch_size = 16
+plt.plot(data2[:,1],'.')
+plt.legend(["GCVFPM"])
+plt.show()
 
-for epoch in range(num_epochs):
-    outputs = model(X_train)
-    optimizer.zero_grad()
-    loss = criterion(outputs, y_train)
-    loss.backward()
-    optimizer.step()
+#  Heater setting N:WGHPWR is setting to 6.2kW all the time
+#  WGT02 gun supply temp is at 40.9+-0.2 degree. That doesn’t change even when gun is on
+#  WGT01 is LCW supply temp is sitting at 32 degree
 
-    if (epoch+1) % 10 == 0:
-        print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
+#Steps:
+#    1. align the values by the timestamps (see below there's a difference in the two files)
+#    2. put WGFCTL, WGFLW, GCVFPM in X input data 
+#    3. make input data the same size for the heater power (N:WGHPWR) above,
+#      which was constant 6.2kW for this whole data set; add to X input data
+#    4. do the same as 3 but for the LCW supply temperature (32 degrees); add to X input data
+#    5. put WGTCAV in Y output data
+#    6. train LSTM
 
-model.eval()
-with torch.no_grad():
-    train_predictions = model(X_train)
-    test_predictions = model(X_test)
-
-train_predictions = scaler.inverse_transform(train_predictions.numpy())
-y_train = scaler.inverse_transform(y_train.reshape(-1, 1).numpy())
-test_predictions = scaler.inverse_transform(test_predictions.numpy())
-y_test = scaler.inverse_transform(y_test.reshape(-1, 1).numpy())
-
-# Plot the results
-plt.figure(figsize=(12, 6))
-plt.plot(data["Month"][:train_size], y_train, label='Actual (Training)')
-plt.plot(data["Month"][train_size+time_steps:], y_test, label='Actual (Testing)')
-plt.plot(data["Month"][time_steps:train_size+time_steps], train_predictions, label='Predicted (Training)')
-plt.plot(data["Month"][train_size+2*time_steps:], test_predictions, label='Predicted (Testing)')
-plt.xlabel('Month')
-plt.ylabel('Passengers')
-plt.legend()
+plt.plot(data2[1000:1010,0])
+plt.plot(data1[1000:1010,0])
 plt.show()
