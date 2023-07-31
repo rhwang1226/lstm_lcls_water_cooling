@@ -9,6 +9,7 @@ from sklearn.preprocessing import MinMaxScaler
 training_set = pd.read_csv('airline-passengers.csv')
 
 training_set_x = training_set.iloc[:,2:6].values
+print(training_set_x)
 
 training_set_y = training_set.iloc[:,1:2].values
 
@@ -112,9 +113,6 @@ optimizer = torch.optim.Adam(lstm.parameters(), lr=learning_rate)
 for epoch in range(num_epochs):
     outputs = lstm(trainX)
     optimizer.zero_grad()
-    
-    print(trainY.size())
-    print(outputs.size())
 
     # obtain the loss function
     loss = criterion(outputs, trainY.reshape((trainY.size()[0], 1)))
