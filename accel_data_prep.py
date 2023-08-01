@@ -16,7 +16,7 @@ data2 = content2[18::]
 res = list(map(str.strip, data.split(',')))
 res2 = list(map(str.strip, data2.split(',')))
 
-print(len(res))
+# print(len(res))
 
 data_list = ['WGTCAVT','WGTCAV','WGFCTLT','WGFCTL','WGFLWT','WGFLW']
 # this is: 
