@@ -15,7 +15,6 @@ data2 = accel_data_prep.get_gunpower()
 
 combined_data = np.concatenate((data1, data2), axis=1)
 
-
 WGHPWR = 6.2
 wghpwr_arr = np.full((combined_data.shape[0], 1), WGHPWR)
 
@@ -41,6 +40,7 @@ this is:
 training_set_x = combined_data[:, [3, 5, 7, 8, 9]]
 training_set_y = combined_data[:, [1]]
 
+
 # modify sliding windows so that it takes in datax and datay (numpy arrays)
 def sliding_windows(dataX, dataY, seq_length):
     x = np.zeros((0, seq_length, 5))
@@ -51,16 +51,17 @@ def sliding_windows(dataX, dataY, seq_length):
 
     print("np.shape(dataX)[0]: ", np.shape(dataX)[0])
     for i in range(np.shape(dataX)[0] - seq_length):
-        _x[0] = dataX[i : (i + seq_length),:] #this will become datax
+        _x[0] = dataX[i: (i + seq_length), :]  # this will become datax
         _y[0] = dataY[i + seq_length, 0]
-        x = np.concatenate((x,_x),axis=0)
-        y = np.concatenate((y,_y),axis=0)
+        x = np.concatenate((x, _x), axis=0)
+        y = np.concatenate((y, _y), axis=0)
         print("_x[0]: ", _x[0])
         print("_y[0]: ", _y[0])
 
     print(x.shape)
     print(y.shape)
     return x, y
+
 
 sc_x = MinMaxScaler()
 training_data_xS = sc_x.fit_transform(training_set_x)
@@ -90,13 +91,13 @@ input_size = 5
 hidden_size = 2
 num_layers = 1
 
-y_features = 1 #feature size (1 time series)
+y_features = 1  # feature size (1 time series)
 
 lstm = lstm_accelerator.LSTM(y_features, input_size, hidden_size, num_layers, seq_length)
 
-criterion = torch.nn.MSELoss()    # mean-squared error for regression
+criterion = torch.nn.MSELoss()  # mean-squared error for regression
 optimizer = torch.optim.Adam(lstm.parameters(), lr=learning_rate)
-#optimizer = torch.optim.SGD(lstm.parameters(), lr=learning_rate)
+# optimizer = torch.optim.SGD(lstm.parameters(), lr=learning_rate)
 
 # Train the model
 for epoch in range(num_epochs):
@@ -105,20 +106,19 @@ for epoch in range(num_epochs):
 
     # obtain the loss function
     loss = criterion(outputs, trainY.reshape((trainY.size()[0], 1)))
-    
+
     loss.backward()
-    
+
     optimizer.step()
     if epoch % 100 == 0:
-      print("Epoch: %d, loss: %1.5f" % (epoch, loss.item()))
-
+        print("Epoch: %d, loss: %1.5f" % (epoch, loss.item()))
 
 lstm.eval()
 train_predict = lstm(dataX)
 
 data_predict = train_predict.data.numpy()
 
-dataY_plot = dataY.data.numpy().reshape((14466,1))
+dataY_plot = dataY.data.numpy().reshape((14466, 1))
 
 data_predict = sc_y.inverse_transform(data_predict)
 dataY_plot = sc_y.inverse_transform(dataY_plot)
@@ -128,7 +128,6 @@ plt.axvline(x=train_size, c='r', linestyle='--')
 plt.plot(dataY_plot)
 plt.plot(data_predict)
 plt.suptitle('Time-Series Prediction')
-
 
 # Add the legend with the labels specified above
 plt.legend()
